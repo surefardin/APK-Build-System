@@ -1,0 +1,63 @@
+
+name: APK Builder
+
+on:
+  workflow_dispatch:
+    inputs:
+      app_name:
+        description: App Name
+        required: true
+        default: My App
+      package_name:
+        description: Package Name
+        required: true
+        default: com.example.myapp
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Create Web App
+        run: |
+          mkdir -p www
+          echo '<h1>My Android App</h1>' > www/index.html
+          npm init -y
+          npm install @capacitor/core @capacitor/android
+          npm install -D @capacitor/cli
+
+      - name: Initialize Capacitor
+        run: |
+          npx cap init "${{ inputs.app_name }}" "${{ inputs.package_name }}" --web-dir=www
+          npx cap add android
+          npx cap sync android
+
+      - name: Build APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Android-APK
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 3
